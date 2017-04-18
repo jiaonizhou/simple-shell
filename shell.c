@@ -82,9 +82,9 @@ int parseCmd(char *rawCmd, struct Cmd *cmds) {
             }
         }
     }
-    printf("%s\n", cmds[0].cmd);
-    printf("%s\n", cmds[0].infile);
-    printf("%s\n", cmds[0].outfile);
+    printf("%s %d\n", cmds[0].cmd, strlen(cmds[0].cmd));
+    printf("%s %d\n", cmds[0].infile, strlen(cmds[0].infile));
+    printf("%s %d\n", cmds[0].outfile, strlen(cmds[0].outfile));
     printf("%s\n", cmds[1].cmd);
     printf("%s\n", cmds[1].infile);
     printf("%s\n", cmds[1].outfile);
@@ -131,7 +131,7 @@ void runCmd(struct Cmd *c) {
                 perror(strerror(status));
                 exit(-1);
             }
-        } else if (pid > 0) {
+        } else if (pid == 0) {
             // setup the correct fd to implement pipe and redirection
             if (c->infd != -1) {
                 if (dup2(c->infd, 0) == -1) {
@@ -169,16 +169,20 @@ void runCmd(struct Cmd *c) {
     }
 }
 
-void evalCmds(struct Cmd *cmds, int numCmd) {
+int evalCmds(struct Cmd *cmds, int numCmd) {
     for(int i = 0; i < numCmd; ++i) {
         struct Cmd *cmd = &cmds[i];
         if (cmd->infile) {
-            cmd->infd = open(cmd->infile, O_RDONLY);
+            if ((cmd->infd = open(cmd->infile, O_RDONLY)) == -1) {
+                return -1;
+            }
         } else {
             cmd->infd = -1;
         }
         if (cmd->outfile) {
-            cmd->outfd = open(cmd->outfile, O_WRONLY);
+            if ((cmd->outfd = open(cmd->outfile, O_WRONLY | O_CREAT)) == -1) {
+                return -1;
+            }
         } else {
             cmd->outfd = -1;
         }
@@ -192,6 +196,7 @@ void evalCmds(struct Cmd *cmds, int numCmd) {
         cmds[0].outfd = pipefd[0];
         cmds[1].infd = pipefd[1];
     }
+    return 0;
 }
 
 
@@ -213,7 +218,10 @@ void shell() {
         }
 
         // Figure out the input fd and output fd for each command. Set up pipe if necessary
-        evalCmds(cmds, numCmd);
+        if (evalCmds(cmds, numCmd) == -1) {
+            perror(strerror(errno));
+            continue;
+        }
 
         for(int i = 0; i < numCmd; ++i) {
             runCmd(&cmds[i]);
