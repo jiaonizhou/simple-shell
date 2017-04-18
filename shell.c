@@ -60,14 +60,14 @@ int parseCmd(char *rawCmd, struct Cmd *cmds) {
     if (token[0] != NULL) {
         num_of_commands = 1;
         for (int i = 0; token[0][i] != '\0'; ++i) {
-            cmds[0].cmd = trimSpace(&token[0][0]);
+            cmds[0].cmd = &token[0][0];
             if (token[0][i] == '<') {
                 token[0][i] = '\0';
-                cmds[0].infile = trimSpace(&token[0][i + 1]);
+                cmds[0].infile = &token[0][i + 1];
             }
             if (token[0][i] == '>') {
                 token[0][i] = '\0';
-                cmds[0].outfile = trimSpace(&token[0][i + 1]);
+                cmds[0].outfile = &token[0][i + 1];
             }
         }
     }
@@ -75,16 +75,28 @@ int parseCmd(char *rawCmd, struct Cmd *cmds) {
     if (token[1] != NULL) {
         num_of_commands = 2;
         for (int j = 0; token[1][j] != '\0'; ++j) {
-            cmds[1].cmd = trimSpace(&token[1][0]);
+            cmds[1].cmd = &token[1][0];
             if (token[1][j] == '>') {
                 token[1][j] = '\0';
-                cmds[1].outfile = trimSpace(&token[1][j + 1]);
+                cmds[1].outfile = &token[1][j + 1];
             }
         }
     }
+    
+    if (cmds[0].cmd != NULL) cmds[0].cmd = trimSpace(cmds[0].cmd);
+    if (cmds[0].infile != NULL) cmds[0].infile = trimSpace(cmds[0].infile);
+    if (cmds[0].outfile != NULL) cmds[0].outfile = trimSpace(cmds[0].outfile);
+    if (cmds[1].cmd != NULL) cmds[1].cmd = trimSpace(cmds[1].cmd);
+    if (cmds[1].infile != NULL) cmds[1].infile = trimSpace(cmds[1].infile);
+    if (cmds[1].outfile != NULL) cmds[1].outfile = trimSpace(cmds[1].outfile);
+    
+
     printf("%s\n", cmds[0].cmd);
+    printf("%lu\n", strlen(cmds[0].cmd));
     printf("%s\n", cmds[0].infile);
+    printf("%lu\n", strlen(cmds[0].infile));
     printf("%s\n", cmds[0].outfile);
+    printf("%lu\n", strlen(cmds[0].outfile));
     printf("%s\n", cmds[1].cmd);
     printf("%s\n", cmds[1].infile);
     printf("%s\n", cmds[1].outfile);
