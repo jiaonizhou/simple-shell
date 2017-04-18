@@ -15,7 +15,7 @@
 
 // structs
 struct Cmd {
-    char cmd[CMD_MAX_LEN];
+    char *cmd;
     char *infile;
     char *outfile;
     int infd;
@@ -25,6 +25,74 @@ struct Cmd {
 // global vars
 char cdir[PATH_MAX];
 
+char * trimSpace(char * buffer)
+{
+    char * new_buffer = NULL;
+    for (int i = 0; buffer[i] != '\0'; ++i) {
+        if (buffer[i] != ' ') {
+            new_buffer = &buffer[i];
+            break;
+        }
+    }
+    for (int j = strlen(buffer) - 1; j >= 0; --j) {
+        if (buffer[j] != ' ') {
+            buffer[j + 1] = '\0';
+            break;
+        }
+    }
+    return new_buffer;
+}
+
+int parseCmd(char *rawCmd, struct Cmd *cmds) {
+    memset(cmds, 0, sizeof(struct Cmd) * MAX_NUM_CMDS);
+
+    int num_of_commands = 0;
+    char * token[2];
+    cmds[0].infile = NULL;
+    cmds[0].outfile = NULL;
+    cmds[1].infile = NULL;
+    cmds[1].outfile = NULL;
+    cmds[0].cmd = NULL;
+    cmds[1].cmd = NULL;
+    token[0] = strtok(rawCmd, "|");
+    token[1] = strtok(NULL, "|");
+
+    if (token[0] != NULL) {
+        num_of_commands = 1;
+        for (int i = 0; token[0][i] != '\0'; ++i) {
+            cmds[0].cmd = trimSpace(&token[0][0]);
+            if (token[0][i] == '<') {
+                token[0][i] = '\0';
+                cmds[0].infile = trimSpace(&token[0][i + 1]);
+            }
+            if (token[0][i] == '>') {
+                token[0][i] = '\0';
+                cmds[0].outfile = trimSpace(&token[0][i + 1]);
+            }
+        }
+    }
+
+    if (token[1] != NULL) {
+        num_of_commands = 2;
+        for (int j = 0; token[1][j] != '\0'; ++j) {
+            cmds[1].cmd = trimSpace(&token[1][0]);
+            if (token[1][j] == '>') {
+                token[1][j] = '\0';
+                cmds[1].outfile = trimSpace(&token[1][j + 1]);
+            }
+        }
+    }
+    printf("%s\n", cmds[0].cmd);
+    printf("%s\n", cmds[0].infile);
+    printf("%s\n", cmds[0].outfile);
+    printf("%s\n", cmds[1].cmd);
+    printf("%s\n", cmds[1].infile);
+    printf("%s\n", cmds[1].outfile);
+    printf("%d\n", num_of_commands);
+
+    return num_of_commands;
+}
+
 void printPrompt() {
     printf("%s $ ", cdir);
 }
@@ -33,11 +101,6 @@ void readCmd(char *cmd) {
     fgets(cmd, CMD_MAX_LEN, stdin);
     // removing the trailing newline
     cmd[strlen(cmd)-1] = '\0';
-}
-
-int parseCmd(char *rawCmd, struct Cmd *cmds) {
-    memset(cmds, 0, sizeof(struct Cmd) * MAX_NUM_CMDS);
-    return 0;
 }
 
 void runCmd(struct Cmd *c) {
