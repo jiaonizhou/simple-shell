@@ -19,7 +19,9 @@ struct Cmd {
     char *infile;
     char *outfile;
     int infd;
+    int infdpipe;
     int outfd;
+    int outfdpipe;
 };
 
 // global vars
@@ -60,14 +62,14 @@ int parseCmd(char *rawCmd, struct Cmd *cmds) {
     if (token[0] != NULL) {
         num_of_commands = 1;
         for (int i = 0; token[0][i] != '\0'; ++i) {
-            cmds[0].cmd = trimSpace(&token[0][0]);
+            cmds[0].cmd = &token[0][0];
             if (token[0][i] == '<') {
                 token[0][i] = '\0';
-                cmds[0].infile = trimSpace(&token[0][i + 1]);
+                cmds[0].infile = &token[0][i + 1];
             }
             if (token[0][i] == '>') {
                 token[0][i] = '\0';
-                cmds[0].outfile = trimSpace(&token[0][i + 1]);
+                cmds[0].outfile = &token[0][i + 1];
             }
         }
     }
@@ -75,20 +77,19 @@ int parseCmd(char *rawCmd, struct Cmd *cmds) {
     if (token[1] != NULL) {
         num_of_commands = 2;
         for (int j = 0; token[1][j] != '\0'; ++j) {
-            cmds[1].cmd = trimSpace(&token[1][0]);
+            cmds[1].cmd = &token[1][0];
             if (token[1][j] == '>') {
                 token[1][j] = '\0';
-                cmds[1].outfile = trimSpace(&token[1][j + 1]);
+                cmds[1].outfile = &token[1][j + 1];
             }
         }
     }
-    printf("%s %d\n", cmds[0].cmd, strlen(cmds[0].cmd));
-    printf("%s %d\n", cmds[0].infile, strlen(cmds[0].infile));
-    printf("%s %d\n", cmds[0].outfile, strlen(cmds[0].outfile));
-    printf("%s\n", cmds[1].cmd);
-    printf("%s\n", cmds[1].infile);
-    printf("%s\n", cmds[1].outfile);
-    printf("%d\n", num_of_commands);
+    if (cmds[0].cmd != NULL) cmds[0].cmd = trimSpace(cmds[0].cmd);
+    if (cmds[0].infile != NULL) cmds[0].infile = trimSpace(cmds[0].infile);
+    if (cmds[0].outfile != NULL) cmds[0].outfile = trimSpace(cmds[0].outfile);
+    if (cmds[1].cmd != NULL) cmds[1].cmd = trimSpace(cmds[1].cmd);
+    if (cmds[1].infile != NULL) cmds[1].infile = trimSpace(cmds[1].infile);
+    if (cmds[1].outfile != NULL) cmds[1].outfile = trimSpace(cmds[1].outfile);
 
     return num_of_commands;
 }
@@ -103,12 +104,13 @@ void readCmd(char *cmd) {
     cmd[strlen(cmd)-1] = '\0';
 }
 
-void runCmd(struct Cmd *c) {
+int runCmd(struct Cmd *c) {
+    int pid = -1;
     if (!strncmp(c->cmd, "cd ", 3)) {
         // builtin function for changing directory
         char *newDir = c->cmd + 3;
         if (!newDir) {
-            return;
+            return pid;
         } else if (newDir[0] != '/') {
             char tempPath[PATH_MAX];
             strcpy(tempPath, cdir);
@@ -124,29 +126,29 @@ void runCmd(struct Cmd *c) {
         printf("Jiaoni Zhou\nW1189742\n");
     } else {
         // fork-exec
-        int pid;
-        if ((pid = fork())) {
-            int status;
-            if (waitpid(pid, &status, 0) == -1) {
-                perror(strerror(status));
-                exit(-1);
-            }
-        } else if (pid == 0) {
+        pid = fork();
+        if (pid == 0) {
             // setup the correct fd to implement pipe and redirection
             if (c->infd != -1) {
                 if (dup2(c->infd, 0) == -1) {
-                    perror(strerror(errno));
+                    perror("dup2");
                     exit(-1);
                 } else {
                     close(c->infd);
+                    if (c->infdpipe != -1) {
+                        close(c->infdpipe);
+                    }
                 }
             }
             if (c->outfd != -1) {
                 if (dup2(c->outfd, 1) == -1) {
-                    perror(strerror(errno));
+                    perror("dup2");
                     exit(-1);
                 } else {
                     close(c->outfd);
+                    if (c->outfdpipe != -1) {
+                        close(c->outfdpipe);
+                    }
                 }
             }
 
@@ -159,42 +161,47 @@ void runCmd(struct Cmd *c) {
             }
             argv[i] = NULL;
             if (execvp(argv[0], argv) == -1) {
-                perror(strerror(errno));
+                perror(argv[0]);
                 exit(-1);
             };
-        } else {
-            perror(strerror(errno));
+        } else if (pid < 0) {
+            perror("fork failed");
             exit(-1);
         }
     }
+    return pid;
 }
 
 int evalCmds(struct Cmd *cmds, int numCmd) {
     for(int i = 0; i < numCmd; ++i) {
         struct Cmd *cmd = &cmds[i];
+        cmd->infd = -1;
+        cmd->infdpipe = -1;
+        cmd->outfd = -1;
+        cmd->outfdpipe = -1;
         if (cmd->infile) {
             if ((cmd->infd = open(cmd->infile, O_RDONLY)) == -1) {
+                perror(cmd->infile);
                 return -1;
             }
-        } else {
-            cmd->infd = -1;
         }
         if (cmd->outfile) {
-            if ((cmd->outfd = open(cmd->outfile, O_WRONLY | O_CREAT)) == -1) {
+            if ((cmd->outfd = open(cmd->outfile, O_RDWR | O_CREAT, 0644)) == -1) {
+                perror(cmd->outfile);
                 return -1;
             }
-        } else {
-            cmd->outfd = -1;
         }
     }
     if (numCmd == 2) {
         int pipefd[2];
         if (pipe(pipefd) == -1) {
-            perror(strerror(errno));
+            perror("pipe failed");
             exit(-1);
         }
-        cmds[0].outfd = pipefd[0];
-        cmds[1].infd = pipefd[1];
+        cmds[0].outfd = pipefd[1];
+        cmds[0].outfdpipe = pipefd[0];
+        cmds[1].infd = pipefd[0];
+        cmds[1].infdpipe = pipefd[1];
     }
     return 0;
 }
@@ -219,23 +226,28 @@ void shell() {
 
         // Figure out the input fd and output fd for each command. Set up pipe if necessary
         if (evalCmds(cmds, numCmd) == -1) {
-            perror(strerror(errno));
             continue;
         }
 
+        int pid[2];
         for(int i = 0; i < numCmd; ++i) {
-            runCmd(&cmds[i]);
+            pid[i] = runCmd(&cmds[i]);
         }
-        // Close the fd if there is any
         for(int i = 0; i < numCmd; ++i) {
-            if (cmds[i].infd != -1) {
-                close(cmds[i].infd);
-            }
-            if (cmds[i].outfd != -1) {
-                close(cmds[i].outfd);
+            int status;
+            if (pid[i] != -1) {
+                if (waitpid(pid[i], &status, 0) == -1) {
+                    perror("waitpid");
+                } else {
+                    if (cmds[i].infd != -1) {
+                        close(cmds[i].infd);
+                    }
+                    if (cmds[i].outfd != -1) {
+                        close(cmds[i].outfd);
+                    }
+                }
             }
         }
-
     }
 }
 
