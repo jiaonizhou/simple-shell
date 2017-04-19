@@ -124,6 +124,18 @@ int runCmd(struct Cmd *c) {
             sprintf(tempPath, "%s/%s", tempPath, newDir);
             if (chdir(tempPath) == -1) {
                 perror(tempPath);
+            }else{
+                char **var;
+                for(var = environ; *var != NULL; var++) {
+                    if (strncmp(*var,"PWD", 3) == 0)
+                    {
+                        char cwd[CMD_MAX_LEN];
+                        getcwd(cwd, sizeof(cwd));
+                        strcpy(*var, "PWD=");
+                        strcat(*var, cwd);
+                        //printf("environ's PWD=%s\n", *var);
+                    }
+                }
             }
         } else {
             if (chdir(newDir) == -1) {
@@ -137,7 +149,7 @@ int runCmd(struct Cmd *c) {
 
     } else if (!strcmp(c->cmd, "about")) {
         // about
-        printf("Jiaoni Zhou W1189742\n Chenjun Ling W1189446\n");
+        printf("Jiaoni Zhou W1189742\nChenjun Ling W1189446\n");
     } else if (!strcmp(c->cmd, "clr")) {
         system("clear");
     } else if (!strcmp(c->cmd, "dir")) {
