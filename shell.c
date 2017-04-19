@@ -100,7 +100,7 @@ int parseCmd(char *rawCmd, struct Cmd *cmds) {
 }
 
 void printPrompt() {
-    printf("%s$ ", cdir);
+    printf("$ ");
 }
 
 void readCmd(char *cmd) {
@@ -111,10 +111,11 @@ void readCmd(char *cmd) {
 
 int runCmd(struct Cmd *c) {
     int pid = -1;
-    if (!strncmp(c->cmd, "cd ", 3)) {
+    if (!strncmp(c->cmd, "cd", 2)) {
         // builtin function for changing directory
         char *newDir = c->cmd + 3;
-        if (!newDir) {
+        if (!*(c->cmd + 2)) {
+            printf("%s\n", cdir);
             return pid;
         } else if (newDir[0] != '/') {
             char tempPath[PATH_MAX];
@@ -133,6 +134,7 @@ int runCmd(struct Cmd *c) {
             perror("getcwd");
             exit(-1);
         }
+
     } else if (!strcmp(c->cmd, "about")) {
         // about
         printf("Jiaoni Zhou\nW1189742\n");
@@ -142,7 +144,7 @@ int runCmd(struct Cmd *c) {
         system("ls");
     } else if (!strcmp(c->cmd, "environ")) {
         char **var;
-        for(var = environ; *var != NULL; ++var){
+        for(var = environ; *var != NULL; ++var) {
             printf("%s\n", *var);
         }
     } else if (!strcmp(c->cmd, "help")) {
