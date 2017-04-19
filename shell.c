@@ -100,7 +100,7 @@ int parseCmd(char *rawCmd, struct Cmd *cmds) {
 }
 
 void printPrompt() {
-    printf("$ ");
+    printf("%s$ ", cdir);
 }
 
 void readCmd(char *cmd) {
@@ -121,29 +121,32 @@ int runCmd(struct Cmd *c) {
             strcpy(tempPath, cdir);
             int len = strlen(tempPath);
             sprintf(tempPath, "%s/%s", tempPath, newDir);
-            chdir(tempPath);
+            if (chdir(tempPath) == -1) {
+                perror(tempPath);
+            }
         } else {
-            chdir(newDir);
+            if (chdir(newDir) == -1) {
+                perror(newDir);
+            }
         }
-        getcwd(cdir, PATH_MAX);
+        if (!getcwd(cdir, PATH_MAX)) {
+            perror("getcwd");
+            exit(-1);
+        }
     } else if (!strcmp(c->cmd, "about")) {
         // about
         printf("Jiaoni Zhou\nW1189742\n");
     } else if (!strcmp(c->cmd, "clr")) {
         system("clear");
-        return;
     } else if (!strcmp(c->cmd, "dir")) {
         system("ls");
-        return;
     } else if (!strcmp(c->cmd, "environ")) {
         char **var;
         for(var = environ; *var != NULL; ++var){
             printf("%s\n", *var);
         }
-        return;
     } else if (!strcmp(c->cmd, "help")) {
         system("help");
-        return;
     } else if (!strcmp(c->cmd, "exit")) {
         kill(0, SIGKILL);
     }else {
