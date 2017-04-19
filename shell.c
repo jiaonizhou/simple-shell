@@ -5,6 +5,10 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/wait.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <signal.h>
 
 // constants
 #define CMD_MAX_LEN     1024
@@ -12,6 +16,8 @@
 #define PATH_MAX        1024
 #define MAX_ARG         64
 #define MAX_NUM_CMDS    2
+
+extern char** environ;
 
 // structs
 struct Cmd {
@@ -90,18 +96,17 @@ int parseCmd(char *rawCmd, struct Cmd *cmds) {
     if (cmds[1].cmd != NULL) cmds[1].cmd = trimSpace(cmds[1].cmd);
     if (cmds[1].infile != NULL) cmds[1].infile = trimSpace(cmds[1].infile);
     if (cmds[1].outfile != NULL) cmds[1].outfile = trimSpace(cmds[1].outfile);
-
     return num_of_commands;
 }
 
 void printPrompt() {
-    printf("%s $ ", cdir);
+    printf("$ ");
 }
 
 void readCmd(char *cmd) {
     fgets(cmd, CMD_MAX_LEN, stdin);
     // removing the trailing newline
-    cmd[strlen(cmd)-1] = '\0';
+    cmd[strlen(cmd) - 1] = '\0';
 }
 
 int runCmd(struct Cmd *c) {
@@ -124,7 +129,24 @@ int runCmd(struct Cmd *c) {
     } else if (!strcmp(c->cmd, "about")) {
         // about
         printf("Jiaoni Zhou\nW1189742\n");
-    } else {
+    } else if (!strcmp(c->cmd, "clr")) {
+        system("clear");
+        return;
+    } else if (!strcmp(c->cmd, "dir")) {
+        system("ls");
+        return;
+    } else if (!strcmp(c->cmd, "environ")) {
+        char **var;
+        for(var = environ; *var != NULL; ++var){
+            printf("%s\n", *var);
+        }
+        return;
+    } else if (!strcmp(c->cmd, "help")) {
+        system("help");
+        return;
+    } else if (!strcmp(c->cmd, "exit")) {
+        kill(0, SIGKILL);
+    }else {
         // fork-exec
         pid = fork();
         if (pid == 0) {
