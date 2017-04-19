@@ -100,7 +100,7 @@ int parseCmd(char *rawCmd, struct Cmd *cmds) {
 }
 
 void printPrompt() {
-    printf("$ ");
+    printf("mysh$ ");
 }
 
 void readCmd(char *cmd) {
@@ -137,7 +137,7 @@ int runCmd(struct Cmd *c) {
 
     } else if (!strcmp(c->cmd, "about")) {
         // about
-        printf("Jiaoni Zhou\nW1189742\n");
+        printf("Jiaoni Zhou W1189742\n Chenjun Ling W1189446\n");
     } else if (!strcmp(c->cmd, "clr")) {
         system("clear");
     } else if (!strcmp(c->cmd, "dir")) {
