@@ -107,3 +107,8 @@ total 32
 -rw-r--r--  1 admin  staff   172 Apr 19 20:06 foo
 -rw-r--r--  1 admin  staff  8060 Apr 19 19:52 shell.c
 ```
+exit
+```sh
+mysh$ exit
+Killed: 9
+```
